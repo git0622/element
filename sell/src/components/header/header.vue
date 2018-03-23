@@ -73,7 +73,7 @@ export default {
   data() {
     return {
       classMap: ['decrease', 'discount', 'special', 'invoice', 'guarantee'],
-      showDetail: true
+      showDetail: false
     }
   },
   components: {
