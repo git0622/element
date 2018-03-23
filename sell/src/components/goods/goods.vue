@@ -1,8 +1,8 @@
 <template>
   <div class="goods">
-    <div class="menuWrapper">
+    <div class="menuWrapper" ref="menuWrapper">
       <ul>
-        <li v-for="(item,index) in goods" :key=index class="menuItem">
+        <li v-for="(item,index) in goods" :key=index class="menuItem" ref="menuList" :class="{'current':currentIndex===index}" @click="selectMenu(index,$event)">
           <span class="text border-1px">
             <span v-show="item.type>0" class="icon" :class="classMap[item.type]"></span>
             {{item.name}}
@@ -10,12 +10,12 @@
         </li>
       </ul>
     </div>
-    <div class="foodsWrapper">
+    <div class="foodsWrapper" ref="foodsWrapper">
       <ul>
-        <li v-for="(item,index) in goods" :key=index class="foodList">
+        <li v-for="(item,index) in goods" :key=index class="foodList" ref="foodList">
           <h1 class="title">{{item.name}}</h1>
           <ul>
-            <li class="foodItem" v-for="(food,index2) in item.foods" :key=index2>
+            <li class="foodItem" v-for="(food,index2) in item.foods" :key=index2 @click="selectFood(food,$event)">
               <div class="icon">
                 <img width="57" height="57" :src="food.icon">
               </div>
@@ -33,10 +33,11 @@
         </li>
       </ul>
     </div>
-    <shopcart :selectFoods="selectFoods" :deliveryPrice="seller.deliveryPrice" :minPrice="seller.minPrice"></shopcart>
+    <shopcart :deliveryPrice="seller.deliveryPrice" :minPrice="seller.minPrice"></shopcart>
   </div>
 </template>
 <script>
+import BScroll from 'better-scroll'
 import shopcart from '@/components/shopcart/shopcart'
 const ERR_OK = 0
 export default {
@@ -44,6 +45,17 @@ export default {
     seller: {
       type: Object
     }
+  },
+  data() {
+    return {
+      goods: [],
+      classMap: ['decrease', 'discount', 'special', 'invoice', 'guarantee'],
+      listHeight: [],
+      scrollY: 0
+    }
+  },
+  components: {
+    shopcart
   },
   computed: {
     selectFoods() {
@@ -56,28 +68,73 @@ export default {
         })
       })
       return foods
+    },
+    currentIndex() {
+      for (let i = 0; i < this.listHeight.length; i++) {
+        let height1 = this.listHeight[i]
+        let height2 = this.listHeight[i + 1]
+        if (this.scrollY >= height1 && this.scrollY < height2) {
+          this._followScroll(i)
+          return i
+        }
+      }
+      return 0
     }
-  },
-  data() {
-    return {
-      goods: [],
-      classMap: ['decrease', 'discount', 'special', 'invoice', 'guarantee']
-    }
-  },
-  components: {
-    shopcart
   },
   created() {
     this.$http.get('/api/goods').then((response) => {
-      console.log(response.body)
       response = response.body
       if (response.errno === ERR_OK) {
         this.goods = response.data
-        console.log(this.goods)
+        this.$nextTick(() => {
+          this._initScroll() // 初始化滚动效果
+          this._calculateHeight() // 获取fooList的高度列表
+        })
       } else {
         alert('请求出错')
       }
     })
+  },
+  methods: {
+    _initScroll() {
+      this.menuScroll = new BScroll(this.$refs.menuWrapper, { click: true })
+      this.foodsScroll = new BScroll(this.$refs.foodsWrapper, { probeType: 3, click: true })
+      this.foodsScroll.on('scroll', (pos) => {
+        // 判断滑动方向，避免下拉时分类高亮错误（如第一分类商品数量为1时，下拉使得第二分类高亮）
+        if (pos.y <= 0) {
+          this.scrollY = Math.abs(Math.round(pos.y))
+        }
+      })
+    },
+    _calculateHeight() { // 计算每一个foodList 相对于显示器的高度
+      let foodList = this.$refs.foodList
+      let height = 0
+      this.listHeight.push(height)
+      for (let i = 0; i < foodList.length; i++) {
+        height += foodList[i].clientHeight
+        this.listHeight.push(height)
+      }
+    },
+    _followScroll(index) {
+      let menuList = this.$refs.menuList // 获取菜单表中的dom
+      let el = menuList[index]
+      this.menuScroll.scrollToElement(el, 300, 0, -100)
+    },
+    selectMenu(index, $event) {
+      if (!event._constructed) { // 自己点击的click才执行以后操作，如果是系统自带的click则不执行（做判断，目的防止PC端执行两次）
+        return
+      }
+      console.log('selectMenu')
+      let foodList = this.$refs.foodList
+      let el = foodList[index]
+      this.foodsScroll.scrollToElement(el, 300)
+    },
+    selectFood(food, $event) {
+      if (!event._constructed) {
+        return
+      }
+      console.log('selectFood')
+    }
   }
 }
 </script>
@@ -101,6 +158,14 @@ export default {
       height 54px
       line-height 14px
       padding 0 12px
+      &.current
+        background #fff
+        font-weight 700
+        margin-top -1px
+        position relative
+        z-index 10
+        .text
+          border-none()
       .text
         display table-cell
         vertical-align middle
