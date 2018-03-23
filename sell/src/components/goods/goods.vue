@@ -133,7 +133,7 @@ export default {
       if (!event._constructed) {
         return
       }
-      console.log('selectFood')
+      // console.log('selectFood')
     }
   }
 }
