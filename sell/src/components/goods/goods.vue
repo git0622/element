@@ -28,17 +28,21 @@
                 </div>
                 <div class="price">￥{{food.price}}</div>
               </div>
+              <div class="cartControlWrapper">
+                <cart-control @add="addFood" :food="food"></cart-control>
+              </div>
             </li>
           </ul>
         </li>
       </ul>
     </div>
-    <shopcart :deliveryPrice="seller.deliveryPrice" :minPrice="seller.minPrice"></shopcart>
+    <shopcart ref="shopcart" :selectFoods="selectFoods" :deliveryPrice="seller.deliveryPrice" :minPrice="seller.minPrice"></shopcart>
   </div>
 </template>
 <script>
 import BScroll from 'better-scroll'
 import shopcart from '@/components/shopcart/shopcart'
+import cartControl from '@/components/cartControl/cartControl'
 const ERR_OK = 0
 export default {
   props: {
@@ -55,7 +59,8 @@ export default {
     }
   },
   components: {
-    shopcart
+    shopcart,
+    cartControl
   },
   computed: {
     selectFoods() {
@@ -134,6 +139,14 @@ export default {
         return
       }
       // console.log('selectFood')
+    },
+    addFood(target) {
+      this._drop(target)
+    },
+    _drop(target) {
+      this.$nextTick(() => {
+        this.$refs.shopcart.drop(target)
+      })
     }
   }
 }
@@ -236,4 +249,8 @@ export default {
             font-size 14px
             font-weight 700
             line-height 24px
+      .cartControlWrapper
+        position absolute
+        right 0
+        bottom 0
 </style>
