@@ -12,12 +12,12 @@
           <div class="price">￥{{totalPrice}}</div>
           <div class="des">另需配送费{{deliveryPrice}}元</div>
         </div>
-        <div class="content-right">
+        <div class="content-right" @click.stop.prevent="pay">
           <div class="pay" :class="payClass">{{payDesc}}</div>
         </div>
       </div>
       <div class="ball-container">
-        <div v-for="ball in balls">
+        <div v-for="(ball,index) in balls" :key=index>
           <transition name="drop" @before-enter="beforeDrop" @enter="droping" @after-enter="afterDrop">
             <div class="ball" v-show="ball.show">
               <div class="inner inner-hook"></div>
@@ -25,24 +25,29 @@
           </transition>
         </div>
       </div>
-      <div class="shopList" v-show="listShow">
-        <div class="listHeader border-1px">
-          <span class="title">购物车</span>
-          <span class="empty">清空</span>
+      <transition name="fold">
+        <div class="shopList" v-show="listShow">
+          <div class="listHeader border-1px">
+            <span class="title">购物车</span>
+            <span class="empty" @click="empty">清空</span>
+          </div>
+          <div class="listContent" ref="listContent">
+            <ul>
+              <li v-for="(food,index) in selectFoods" class="food" :key=index>
+                <div class="name">{{food.name}}</div>
+                <div class="price">￥{{food.price}}</div>
+                <div class="cartControlWrapper">
+                  <cartControl @add="addFood" :food="food"></cartControl>
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
-        <div class="listContent" ref="listContent">
-          <ul>
-            <li v-for="food in selectFoods" class="food">
-              <div class="name">{{food.name}}</div>
-              <div class="price">￥{{food.price}}</div>
-              <div class="cartControlWrapper">
-                <cartControl @add="addFood" :food="food"></cartControl>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </div>
+      </transition>
     </div>
+    <transition name="listMask">
+      <div class="listMask" v-show="listShow" @click="hideList"></div>
+    </transition>
   </div>
 </template>
 <script>
@@ -161,9 +166,9 @@ export default {
           let rect = ball.target.getBoundingClientRect()
           let x = rect.x - 32
           let y = -(window.innerHeight - rect.top - 22)
-          console.log(getComputedStyle(el, false)['display']) // none
+          // console.log(getComputedStyle(el, false)['display']) // none
           el.style.display = ''
-          console.log(getComputedStyle(el, false)['display']) // block
+          // console.log(getComputedStyle(el, false)['display']) // none
           el.style.webkitTransform = 'translate3d(0,' + y + 'px,0)'
           el.style.transform = 'translate3d(0,' + y + 'px,0)'
           let inner = el.getElementsByClassName('inner-hook')[0]
@@ -176,7 +181,7 @@ export default {
       let rf = el.offsetHeight
       this.$nextTick(() => {
         // console.log('droping')
-        console.log(getComputedStyle(el, false)['display']) // block
+        // console.log(getComputedStyle(el, false)['display']) // block
         el.style.webkitTransform = 'translate3d(0,0,0)'
         el.style.transform = 'translate3d(0,0,0)'
         let inner = el.getElementsByClassName('inner-hook')[0]
@@ -186,13 +191,13 @@ export default {
       })
     },
     afterDrop(el) { // 小球下落结束后，隐藏小球
-      console.log(getComputedStyle(el, false)['display']) // block
+      // console.log(getComputedStyle(el, false)['display']) // block
       // console.log(el.style.display) // 只能获取行内样式，不能获取css样式，所以输出为空
       let ball = this.dropBalls.shift()
       if (ball) {
         ball.show = false
         el.style.display = 'none'
-        console.log(getComputedStyle(el, false)['display']) // none
+        // console.log(getComputedStyle(el, false)['display']) // none
       }
     },
     toggleList() {
@@ -201,6 +206,21 @@ export default {
         return
       }
       this.fold = !this.fold
+    },
+    hideList() { // 隐藏购物车列表
+      this.fold = true
+    },
+    pay() {
+      if (this.totalPrice < this.minPrice) { // 价钱总数小于起送价，不执行结算弹框
+        return
+      }
+      alert(`支付${this.totalPrice}元`)
+    },
+    empty() { // 清空购物车
+      // this.selectFoods = []
+      this.selectFoods.forEach((food) => {
+        food.count = 0
+      })
     }
   }
 }
@@ -214,12 +234,14 @@ export default {
   bottom 0
   width 100%
   height 48px
-  background-color #141d27
+  z-index 50
+  // background-color #141d27
   .content
     width 100%
     display flex
     height 48px
     font-size 0
+    background-color #141d27
     .content-left
       flex 1
       .logoWrapper
@@ -311,9 +333,12 @@ export default {
     left 0
     top 0
     width 100%
-    color red
     transform translate3d(0, -100%, 0) // 相对于自身原来的位置向上偏移自身高度的位置
     z-index -1
+    &.fold-enter-active, &.fold-leave-active
+      transition all 1s
+    &.fold-enter, &.fold-leave-to
+      transform translate3d(0, 0, 0) // 相对于自身原来的位置向上偏移自身高度的位置
     .listHeader
       line-height 40px
       background-color #f3f5f7
@@ -351,4 +376,19 @@ export default {
           position absolute
           right -6px
           top 2px
+.listMask
+  position fixed
+  left 0
+  top 0
+  width 100%
+  height 100%
+  background-color rgba(7, 17, 27, 0.6)
+  z-index 40
+  opacity 1
+  backdrop-filter blur(10px)
+  &.listMask-enter-active, &.listMask-leave-active
+    transition all 0.4s
+  &.listMask-enter, &.listMask-leave-to
+    opacity 0
+    background-color rgba(7, 17, 27, 0)
 </style>
